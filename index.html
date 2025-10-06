@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Campus Navigator AR</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+
+        #ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 20px;
+            pointer-events: none; /* Allows clicks to pass through to the AR scene */
+            z-index: 100;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        p {
+            margin: 5px 0 0 0;
+            font-size: 1rem;
+        }
+    </style>
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <script>
+        // Data for your campus locations
+        // *** REPLACE THESE COORDINATES WITH YOUR OWN CAMPUS LOCATIONS ***
+        const campusLocations = [
+            {
+                name: "Main Building",
+                latitude: 17.561564,
+                longitude: 78.455154
+            },
+            {
+                name: "Library",
+                latitude: 17.562090,
+                longitude: 78.455491
+            },
+            {
+                name: "Cafeteria",
+                latitude: 17.562308,
+                longitude: 78.455895
+            },
+            {
+                name: "CSIT(3rd year)",
+                latitude: 17.560994,
+                longitude: 78.455193
+            }
+        ];
+
+        // Haversine formula to calculate distance between two GPS coordinates
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // Distance in meters
+        }
+
+        // A-Frame component to dynamically place AR entities based on GPS
+        AFRAME.registerComponent('ar-entity-loader', {
+            init: function () {
+                const sceneEl = this.el.sceneEl;
+
+                // Listen for a new GPS position update
+                sceneEl.addEventListener('gps-camera-update-position', (event) => {
+                    const userLat = event.detail.position.latitude;
+                    const userLon = event.detail.position.longitude;
+                    
+                    // Clear existing markers to prevent duplicates
+                    const existingEntities = document.querySelectorAll('[gps-new-entity-place]');
+                    existingEntities.forEach(el => el.remove());
+
+                    // Loop through all campus locations
+                    campusLocations.forEach(location => {
+                        const distance = calculateDistance(userLat, userLon, location.latitude, location.longitude);
+
+                        // Only show AR content for locations within 500 meters
+                        if (distance < 500) {
+                            // Create a new entity (container for AR objects)
+                            const entity = document.createElement('a-entity');
+                            
+                            // Add the AR.js component to place the entity at the real-world coordinates
+                            entity.setAttribute('gps-new-entity-place', {
+                                latitude: location.latitude,
+                                longitude: location.longitude
+                            });
+
+                            // Add a text label to the entity
+                            const text = document.createElement('a-text');
+                            text.setAttribute('value', `${location.name}\n${distance.toFixed(0)}m away`);
+                            text.setAttribute('scale', '20 20 20');
+                            text.setAttribute('look-at', '[gps-new-camera]');
+                            text.setAttribute('align', 'center');
+                            text.setAttribute('color', 'white');
+                            text.setAttribute('background-color', 'rgba(0,0,0,0.5)');
+                            
+                            // The height of the text (adjust as needed)
+                            text.setAttribute('position', '0 10 0');
+
+                            entity.appendChild(text);
+
+                            // Add the entity to the AR scene
+                            sceneEl.appendChild(entity);
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+</head>
+<body>
+    <a-scene 
+        vr-mode-ui="enabled: false" 
+        arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;" 
+        ar-entity-loader>
+
+        <a-camera gps-new-camera look-controls></a-camera>
+    </a-scene>
+
+    <div id="ui-container">
+        <h1>AR Campus Navigator</h1>
+        <p>Walk around to see AR labels for nearby buildings.</p>
+        <p>Ensure your device's GPS and camera are enabled.</p>
+    </div>
+</body>
+
+</html>
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Campus Navigator AR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+            text-align: center;
+            background-color: #121212;
+        }
+
+        #permission-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        #permission-screen h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        #permission-button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #121212;
+            background-color: #00bcd4;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        #permission-button:hover {
+            transform: translateY(-2px);
+        }
+
+        #ar-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none; /* Initially hidden */
+        }
+
+        #left-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 300px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            pointer-events: auto;
+            z-index: 101;
+            text-align: left;
+            overflow-y: auto;
+            backdrop-filter: blur(5px);
+        }
+
+        #search-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        #search-input {
+            padding: 8px;
+            border-radius: 5px;
+            border: none;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            color: black;
+            font-size: 1rem;
+        }
+        
+        #search-button, #show-all-button {
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: none;
+            background-color: #00bcd4;
+            color: white;
+            cursor: pointer;
+            font-size: 1rem;
+            text-shadow: none;
+        }
+        
+        h1, h2 {
+            font-size: 1.5rem;
+            margin: 0 0 10px 0;
+        }
+
+        p {
+            margin: 5px 0;
+            font-size: 1rem;
+        }
+
+        .location-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+            width: 100%;
+        }
+        
+        .location-item {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .location-item:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <script>
+        const campusLocations = [
+            // *** ENTER YOUR CAMPUS LOCATIONS HERE ***
+            // Example: { name: "Main Building", latitude: 17.561564, longitude: 78.455154 },
+        ];
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            const y = Math.sin(Δλ) * Math.cos(φ2);
+            const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+            const bearing = Math.atan2(y, x) * 180 / Math.PI;
+            return (bearing + 360) % 360;
+        }
+
+        AFRAME.registerComponent('ar-navigator', {
+            schema: {
+                targetName: { type: 'string', default: '' }
+            },
+            init: function () {
+                const sceneEl = this.el.sceneEl;
+                const arrowEl = document.getElementById('direction-arrow');
+                let targetLocation = null;
+
+                sceneEl.addEventListener('set-target-location', (event) => {
+                    const { name } = event.detail;
+                    targetLocation = campusLocations.find(loc => loc.name === name);
+                    this.data.targetName = name;
+                    this.updateARMarkers();
+                });
+                
+                sceneEl.addEventListener('gps-camera-update-position', (event) => {
+                    const userLat = event.detail.position.latitude;
+                    const userLon = event.detail.position.longitude;
+                    
+                    if (targetLocation) {
+                        const bearing = calculateBearing(userLat, userLon, targetLocation.latitude, targetLocation.longitude);
+                        arrowEl.object3D.rotation.y = -(bearing * Math.PI / 180);
+                    }
+                    
+                    this.updateARMarkers();
+                });
+            },
+            
+            updateARMarkers: function() {
+                const sceneEl = this.el.sceneEl;
+                const userPosition = document.querySelector('[gps-new-camera]').getAttribute('gps-new-camera');
+                const userLat = userPosition.latitude;
+                const userLon = userPosition.longitude;
+                
+                const existingEntities = document.querySelectorAll('[gps-new-entity-place]');
+                existingEntities.forEach(el => el.remove());
+                
+                const targetLocation = this.data.targetName
+                    ? campusLocations.find(loc => loc.name === this.data.targetName)
+                    : null;
+                
+                if (!targetLocation) {
+                    campusLocations.forEach(location => {
+                        const distance = calculateDistance(userLat, userLon, location.latitude, location.longitude);
+                        if (distance < 500) {
+                            const entity = document.createElement('a-entity');
+                            entity.setAttribute('gps-new-entity-place', { latitude: location.latitude, longitude: location.longitude });
+                            const text = document.createElement('a-text');
+                            text.setAttribute('value', `${location.name}\n${distance.toFixed(0)}m away`);
+                            text.setAttribute('scale', '20 20 20');
+                            text.setAttribute('look-at', '[gps-new-camera]');
+                            text.setAttribute('align', 'center');
+                            text.setAttribute('color', 'white');
+                            text.setAttribute('background-color', 'rgba(0,0,0,0.5)');
+                            text.setAttribute('position', '0 10 0');
+                            entity.appendChild(text);
+                            sceneEl.appendChild(entity);
+                        }
+                    });
+                } else {
+                    const distance = calculateDistance(userLat, userLon, targetLocation.latitude, targetLocation.longitude);
+                    const entity = document.createElement('a-entity');
+                    entity.setAttribute('gps-new-entity-place', { latitude: targetLocation.latitude, longitude: targetLocation.longitude });
+                    
+                    const text = document.createElement('a-text');
+                    text.setAttribute('value', `${targetLocation.name}\n${distance.toFixed(0)}m away`);
+                    text.setAttribute('scale', '20 20 20');
+                    text.setAttribute('look-at', '[gps-new-camera]');
+                    text.setAttribute('align', 'center');
+                    text.setAttribute('color', 'white');
+                    text.setAttribute('background-color', 'rgba(0,0,0,0.5)');
+                    text.setAttribute('position', '0 10 0');
+                    entity.appendChild(text);
+
+                    const targetRing = document.createElement('a-ring');
+                    targetRing.setAttribute('color', 'green');
+                    targetRing.setAttribute('radius-inner', '8');
+                    targetRing.setAttribute('radius-outer', '10');
+                    targetRing.setAttribute('position', '0 0 0');
+                    targetRing.setAttribute('look-at', '[gps-new-camera]');
+                    targetRing.setAttribute('material', 'shader: standard; emissive: #00FF00; emissiveIntensity: 0.5;');
+                    entity.appendChild(targetRing);
+                    
+                    sceneEl.appendChild(entity);
+                }
+            }
+        });
+
+        // Permission handler and UI setup
+        window.addEventListener('load', () => {
+            const permissionButton = document.getElementById('permission-button');
+            const permissionScreen = document.getElementById('permission-screen');
+            const arContainer = document.getElementById('ar-container');
+            const searchInput = document.getElementById('search-input');
+            const searchButton = document.getElementById('search-button');
+            const showAllButton = document.getElementById('show-all-button');
+            const sceneEl = document.getElementById('ar-scene');
+
+            const renderLocationList = (filterTerm = '') => {
+                const listEl = document.getElementById('location-list');
+                listEl.innerHTML = '';
+                const filteredLocations = filterTerm
+                    ? campusLocations.filter(loc => loc.name.toLowerCase().includes(filterTerm.toLowerCase()))
+                    : campusLocations;
+                
+                if (filteredLocations.length > 0) {
+                    filteredLocations.forEach(location => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'location-item';
+                        listItem.textContent = location.name;
+                        listItem.addEventListener('click', () => {
+                            sceneEl.emit('set-target-location', { name: location.name });
+                            searchInput.value = location.name;
+                        });
+                        listEl.appendChild(listItem);
+                    });
+                } else {
+                    const noResults = document.createElement('li');
+                    noResults.textContent = 'No matching locations found.';
+                    noResults.style.color = '#ccc';
+                    noResults.style.listStyleType = 'none';
+                    listEl.appendChild(noResults);
+                }
+            };
+
+            permissionButton.addEventListener('click', () => {
+                // Request location permission first
+                navigator.geolocation.getCurrentPosition(
+                    () => {
+                        // Location permission granted, now attempt camera
+                        navigator.mediaDevices.getUserMedia({ video: true })
+                            .then(() => {
+                                // Both permissions granted
+                                permissionScreen.style.display = 'none';
+                                arContainer.style.display = 'block';
+                                renderLocationList(); // Render list on start
+                            })
+                            .catch((err) => {
+                                alert('Camera permission is required to use this app. Please enable it in your browser settings.');
+                            });
+                    },
+                    (err) => {
+                        alert('Location permission is required to use this app. Please enable it in your browser settings.');
+                    }
+                );
+            });
+
+            searchButton.addEventListener('click', () => {
+                const searchTerm = searchInput.value;
+                const location = campusLocations.find(loc => loc.name.toLowerCase() === searchTerm.toLowerCase());
+                if (location) {
+                    sceneEl.emit('set-target-location', { name: location.name });
+                } else {
+                    sceneEl.emit('set-target-location', { name: '' });
+                }
+                renderLocationList(searchTerm);
+            });
+
+            showAllButton.addEventListener('click', () => {
+                searchInput.value = '';
+                sceneEl.emit('set-target-location', { name: '' });
+                renderLocationList();
+            });
+        });
+    </script>
+</head>
+<body>
+    <div id="permission-screen">
+        <h1>Welcome to Campus Navigator AR</h1>
+        <p>This application requires access to your camera and GPS to work. Please grant the permissions to begin your AR tour.</p>
+        <button id="permission-button">Start Navigation</button>
+    </div>
+
+    <div id="ar-container">
+        <a-scene 
+            id="ar-scene"
+            vr-mode-ui="enabled: false" 
+            arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;" 
+            ar-navigator>
+
+            <a-camera gps-new-camera look-controls></a-camera>
+            
+            <a-cone id="direction-arrow" 
+                position="0 -5 -10" 
+                rotation="0 0 0" 
+                height="10" 
+                radius-bottom="5" 
+                radius-top="0" 
+                color="#00bcd4"
+                look-at="[gps-new-camera]">
+            </a-cone>
+        </a-scene>
+
+        <div id="left-panel">
+            <h1>Campus Navigator AR</h1>
+            <p>Select a location from the list or search for one to begin your navigation.</p>
+            <div id="search-container">
+                <input type="text" id="search-input" placeholder="Search for a building...">
+                <button id="search-button">Search</button>
+                <button id="show-all-button">Show All</button>
+            </div>
+            <hr style="width:100%; border: 1px solid rgba(255,255,255,0.2);">
+            <h2>Campus Locations</h2>
+            <ul class="location-list" id="location-list">
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
